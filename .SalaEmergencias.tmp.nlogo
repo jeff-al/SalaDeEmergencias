@@ -164,11 +164,16 @@ end
 
 to atender-leve [paciente]
   if doctores-desocupados >= 1 [
+    ask one-of turtles with [tipo = "doctor"] [
+      create-link-to paciente
+      set doctores-desocupados (doctores-desocupados - 1)
+    ]
   ]
 end
 
 to atender-grave [paciente]
   if doctores-desocupados >= 3 [
+
   ]
 end
 
@@ -179,15 +184,15 @@ end
 
 to verificar-muertes
   ask turtles with [ tipo = "paciente" and tiempo-de-vida < ticks] [
-    die
     set num-muertes (num-muertes + 1)
+    die
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-914
+1131
 10
-1351
+1568
 448
 -1
 -1
@@ -205,8 +210,8 @@ GRAPHICS-WINDOW
 16
 -16
 16
-0
-0
+1
+1
 1
 ticks
 30.0
@@ -349,10 +354,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-437
-299
-561
-344
+861
+362
+985
+407
 NIL
 num-muertes
 17
@@ -423,7 +428,7 @@ count turtles with [ categoria = 1]
 SLIDER
 205
 216
-377
+383
 249
 prom-espera-leve
 prom-espera-leve
@@ -453,13 +458,73 @@ HORIZONTAL
 SLIDER
 203
 304
-409
+385
 337
 prom-espera-muy-grave
 prom-espera-muy-grave
 0
 500
 60.0
+1
+1
+min
+HORIZONTAL
+
+SLIDER
+418
+215
+597
+248
+prom-atencion-leve
+prom-atencion-leve
+0
+100
+50.0
+1
+1
+min
+HORIZONTAL
+
+SLIDER
+417
+262
+605
+295
+prom-atencion-grave
+prom-atencion-grave
+0
+100
+50.0
+1
+1
+min
+HORIZONTAL
+
+SLIDER
+416
+306
+632
+339
+prom-atencion-muy-grave
+prom-atencion-muy-grave
+0
+100
+50.0
+1
+1
+min
+HORIZONTAL
+
+SLIDER
+622
+218
+834
+251
+prom-deteccion-condicion
+prom-deteccion-condicion
+0
+100
+50.0
 1
 1
 min
