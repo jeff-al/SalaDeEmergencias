@@ -172,7 +172,6 @@ end
 to atender-grave [paciente]
   if doctores-desocupados >= 3 [
     show "grave"
-    ask turtle ([who] of paciente) [ die ]
   ]
 end
 
