@@ -20,6 +20,8 @@ turtles-own [
   categoria
   tiempo-de-vida
   en-espera
+  tiempo-condicion
+  enfer
 ]
 
 ;; Inicializa el ambiente para su ejecucion
@@ -37,19 +39,12 @@ end
 ;; Hace las iteraciones en cada tik
 to go
   if ticks >= (proxima-llegada) [
-    let proba random 100
-    (ifelse
-      proba <= %-leve [
-      crear-paciente-leve
-    ]
-    proba <= %-grave [
-      crear-paciente-grave
-    ]
-    proba <= %-muy-grave [
-      crear-paciente-muy-grave
-    ])
+    crear-paciente
     set proxima-llegada ((random-poisson pacientes-minuto) + ticks)
   ]
+  acomodar-pacientes
+  verificar-pacientes
+  verificar-condicion
   atender-paciente
   verificar-muertes
   tick
@@ -59,6 +54,7 @@ end
 to setup-turtles
   setup-doctores
   setup-enfermeras
+  setup-camas
 end
 
 
@@ -88,6 +84,30 @@ to setup-enfermeras
   ]
 end
 
+to setup-camas
+  let x 2
+  let y 2
+  let i 0
+  repeat cant-camas[
+    create-turtles 1 [
+      set color 127
+      set tipo "cama"
+      set xcor min-pxcor + x
+      set ycor min-pycor + y
+      set shape "square"
+      set en-espera 1
+    ]
+    set i i + 1
+    set y y + 2
+    ;; cantidad de camas por fila 5
+    if i = 5 [
+      set y 2
+      set x x + 2
+      set i 0
+    ]
+  ]
+end
+
 ;; Establece los porcentajes o rangos para las probabilidades puestas en la interfaz
 to setup-porcentajes
   set %-leve (%-pacientes-leves - 1)
@@ -102,6 +122,18 @@ to setup-listas
   set lista-muy-graves []
 end
 
+to crear-paciente
+  create-turtles 1 [
+    set color 136
+    set tipo "paciente"
+    set xcor max-pxcor - random 13
+    set ycor min-pycor + random 13
+    set shape "person"
+    set tiempo-de-vida (ticks + (random-poisson prom-espera-leve))
+    set en-espera 4
+  ]
+end
+
 ;; Crea un paciente leve
 ;; Lo ubica en la parte inferior derecha
 to crear-paciente-leve
@@ -109,11 +141,11 @@ to crear-paciente-leve
     set color green
     set categoria 3
     set tipo "paciente"
-    set xcor 2 + random 13
-    set ycor -2 - random 13
+    set xcor max-pxcor - random 13
+    set ycor min-pycor + random 13
     set shape "person"
     set tiempo-de-vida (ticks + (random-poisson prom-espera-leve))
-    set en-espera 1
+    set en-espera 2
   ]
 end
 
@@ -128,7 +160,7 @@ to crear-paciente-grave
     set ycor -2 - random 13
     set shape "person"
     set tiempo-de-vida (ticks + (random-poisson prom-espera-grave))
-    set en-espera 1
+    set en-espera 2
   ]
 end
 
@@ -143,7 +175,7 @@ to crear-paciente-muy-grave
     set ycor -2 - random 13
     set shape "person"
     set tiempo-de-vida (ticks + (random-poisson prom-espera-muy-grave))
-    set en-espera 1
+    set en-espera 2
   ]
 end
 
@@ -194,6 +226,7 @@ to atender-muy-grave [paciente]
   if doctores-desocupados >= 5 [
     ask one-of turtles with [tipo = "doctor" and en-espera = 1] [
       create-link-to paciente
+      ;;move-to paciente
       set doctores-desocupados (doctores-desocupados - 5)
       set en-espera 0
     ]
@@ -209,15 +242,103 @@ to verificar-muertes
     die
   ]
 end
+
+to acomodar-pacientes
+  let camas sort turtles with [ tipo = "cama" and en-espera = 1 ]
+  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 4 ]
+  while [(length pacientes > 0) and (length camas > 0)][
+    let paciente (first pacientes)
+    let cama (first camas)
+
+    ask turtle ([who] of paciente) [
+      move-to cama
+      set en-espera 3
+    ]
+
+    ask turtle ([who] of cama) [
+      set en-espera 0
+    ]
+
+    set pacientes remove-item 0 pacientes
+    set camas remove-item 0 camas
+  ]
+end
+
+
+to verificar-pacientes
+  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 3 ]
+  let enfermeras sort turtles with [ tipo = "enfermera" and en-espera = 1 ]
+  while [(length pacientes > 0) and (length enfermeras > 0)][
+    let paciente (first pacientes)
+    let enfermera (first enfermeras)
+
+    ask turtle ([who] of enfermera) [
+      move-to paciente
+      set xcor (xcor - 1)
+      set en-espera 0
+    ]
+
+    ask turtle ([who] of paciente) [
+      set tiempo-condicion ((random-exponential prom-deteccion-condicion) + ticks)
+      set enfer enfermera
+      set en-espera 2
+    ]
+
+    set pacientes remove-item 0 pacientes
+    set enfermeras remove-item 0 enfermeras
+  ]
+end
+
+to verificar-condicion
+  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 2 and tiempo-condicion <= ticks]
+  while [length pacientes > 0][
+
+    let paciente (first pacientes)
+    let enfermera 1
+
+    let proba random 100
+    let colorP 1
+    let condicion 1
+    (ifelse
+      proba <= %-leve [
+        set condicion 1
+        set colorP 55
+      ]
+      proba <= %-grave [
+        set condicion 2
+        set colorP 45
+      ]
+      proba <= %-muy-grave [
+        set condicion 3
+        set colorP 15
+    ])
+
+    ask turtle ([who] of paciente) [
+      set en-espera 1
+      set color colorP
+      set categoria condicion
+      set enfermera enfer
+    ]
+
+    ask turtle ([who] of enfermera) [
+      set xcor 2 + random 13
+      set ycor 2 + random 13
+      set en-espera 1
+    ]
+
+    set pacientes remove-item 0 pacientes
+  ]
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
-1131
-10
-1568
-448
+763
+14
+1264
+516
 -1
 -1
-13.0
+14.94
 1
 10
 1
@@ -238,25 +359,25 @@ ticks
 30.0
 
 SLIDER
-11
-123
-183
-156
+21
+175
+200
+208
 cant-camas
 cant-camas
 0
-100
-50.0
+50
+5.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-385
-123
-557
-156
+212
+176
+391
+209
 cant-salas
 cant-salas
 0
@@ -268,10 +389,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-197
-123
-369
-156
+213
+130
+391
+163
 cant-enfermeras
 cant-enfermeras
 0
@@ -283,10 +404,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-172
-183
-205
+21
+222
+201
+255
 pacientes-minuto
 pacientes-minuto
 0
@@ -298,10 +419,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-216
-195
-249
+20
+267
+202
+300
 %-pacientes-leves
 %-pacientes-leves
 0
@@ -313,10 +434,10 @@ SLIDER
 HORIZONTAL
 
 SLIDER
-11
-307
-196
-340
+20
+360
+204
+393
 %-pacientes-graves
 %-pacientes-graves
 0
@@ -328,10 +449,10 @@ SLIDER
 HORIZONTAL
 
 SLIDER
-10
-261
-195
-294
+20
+314
+203
+347
 %-pacientes-muy-graves
 %-pacientes-muy-graves
 0
@@ -343,10 +464,10 @@ SLIDER
 HORIZONTAL
 
 BUTTON
-13
-10
-76
-43
+68
+41
+152
+85
 NIL
 setup
 NIL
@@ -360,25 +481,25 @@ NIL
 1
 
 SLIDER
-577
-125
-749
-158
+21
+129
+200
+162
 cant-doctores
 cant-doctores
 0
 100
-75.0
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-861
-362
-985
-407
+20
+415
+204
+460
 NIL
 num-muertes
 17
@@ -386,10 +507,10 @@ num-muertes
 11
 
 MONITOR
-720
-364
-839
-409
+213
+415
+398
+460
 NIL
 num-camas-usadas
 17
@@ -397,10 +518,10 @@ num-camas-usadas
 11
 
 BUTTON
-97
-10
-160
-43
+165
+42
+248
+86
 NIL
 go
 T
@@ -414,10 +535,10 @@ NIL
 0
 
 MONITOR
-14
-366
-257
-411
+20
+474
+203
+519
 pacientes-leves-SA
 count turtles with [categoria = 3]
 17
@@ -425,10 +546,10 @@ count turtles with [categoria = 3]
 11
 
 MONITOR
-276
-365
-532
-410
+212
+474
+396
+519
 pacientes-graves-SA
 count turtles with [ categoria = 2]
 17
@@ -436,10 +557,10 @@ count turtles with [ categoria = 2]
 11
 
 MONITOR
-548
-364
-704
-409
+406
+474
+590
+519
 pacientes-muy-graves-SA
 count turtles with [ categoria = 1]
 17
@@ -447,10 +568,10 @@ count turtles with [ categoria = 1]
 11
 
 SLIDER
-205
-216
-383
-249
+213
+267
+393
+300
 prom-espera-leve
 prom-espera-leve
 0
@@ -462,10 +583,10 @@ min
 HORIZONTAL
 
 SLIDER
-206
-260
-385
-293
+213
+313
+394
+346
 prom-espera-grave
 prom-espera-grave
 0
@@ -477,10 +598,10 @@ min
 HORIZONTAL
 
 SLIDER
-203
-304
-385
-337
+214
+360
+395
+393
 prom-espera-muy-grave
 prom-espera-muy-grave
 0
@@ -492,10 +613,10 @@ min
 HORIZONTAL
 
 SLIDER
-418
-215
-597
-248
+404
+268
+583
+301
 prom-atencion-leve
 prom-atencion-leve
 0
@@ -507,10 +628,10 @@ min
 HORIZONTAL
 
 SLIDER
-417
-262
-605
-295
+404
+314
+585
+347
 prom-atencion-grave
 prom-atencion-grave
 0
@@ -522,30 +643,30 @@ min
 HORIZONTAL
 
 SLIDER
-416
-306
-632
-339
+405
+359
+585
+392
 prom-atencion-muy-grave
 prom-atencion-muy-grave
 0
 100
-50.0
+2.0
 1
 1
 min
 HORIZONTAL
 
 SLIDER
-622
-218
-834
-251
+213
+222
+392
+255
 prom-deteccion-condicion
 prom-deteccion-condicion
 0
 100
-50.0
+100.0
 1
 1
 min
