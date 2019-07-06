@@ -15,26 +15,35 @@ globals [
   lista-muy-graves
 
   prom-tiempo-reposo
+
+  ;;Constantes de estados
+  estado-llegada ;; Estado del paciente cuando llega al hospital
+  estado-espera-enfermera ;; Estado del paciente cuando esta en una silla a la espera de ser atendido por una enfermera
+  estado-verificando-condicion ;; Estado del paciente cuando se encuestran con la enfermera verificando la condicion de salud
+  estado-espera-atencion ;; Estado del paciente cuando espera a ser atendido por el doctor
+  estado-en-quirofano ;; Estado del paciente cuando se encuentra en un quirofano
+  estado-esperando-cama ;; Estado del paciente que esta esperado un cama
+  estado-listo-para-salir ;; Estado del paciente cuando se encuentra listo para salir
+  estado-ocupado ;; Estado de las tortugas que se encuentran ocupadas
+  estado-libre ;; Estado de las tortugas que se encuentran desocupadas
 ]
 
 turtles-own [
   tipo ;; Tipo de paciente
   categoria ;; Categoria del paciente 1 (leve), 2 (grave), 3 (muy grave)
+  estado ;; Estado del paciente en dado momento
   tiempo-de-vida ;; Tiempo de vida del paciente
-  en-espera ;; Estado del paciente en dado momento
   tiempo-condicion ;; Tiempo que se dura en determinar la condicion del paciente
-  enfer ;; Enfermera encargada de hacer la revision del paciente, 0 si la enfermera ya no esta a cargo del paciente
-  cam ;; Cama en la que se encuentra el paciente, 0 si no esta en ninguna cama
-  sill ;; silla en la que se sienta el paciente
   tiempo-atencion ;; Tiempo que se va a durar ateniendo al paciente
-  n-paciente ;; doctores que atienden al paciente, 0 si el doc ya no esta a cargo
+  n-paciente ;; paciente que esta relacionado con el agente, 0 si no hay ningun paciente relacionado
 ]
 
 ;; Inicializa el ambiente para su ejecucion
 to setup
   clear-all
-  setup-porcentajes
+  setup-estados
   setup-turtles
+  setup-porcentajes
   setup-listas
   set doctores-desocupados cant-doctores
   set camas-desocupadas cant-camas
@@ -58,6 +67,7 @@ to go
   tick
 end
 
+;; ------------------------------------------------Setups------------------------------------------------------------------------------
 ;; Establece la configuracion de las tortugas
 to setup-turtles
   setup-camas
@@ -69,7 +79,7 @@ end
 
 
 ;; Establece la configuracion para las tortugas doctores
-;; Lo ubica en la parte superior izquierda
+;; Los ubica en la parte superior izquierda
 to setup-doctores
   create-turtles cant-doctores [
     set color white
@@ -77,13 +87,13 @@ to setup-doctores
     set xcor min-pxcor + 1 + random 15
     set ycor max-pycor - 1 - random 3
     set shape "person"
-    set en-espera 1
-    set n-paciente -1
+    set estado estado-libre
+    set n-paciente 0
   ]
 end
 
 ;; Establece la configuracion para las tortugas enfermeras
-;; Lo ubica en la parte superior derecha
+;; Las ubica en la parte superior derecha
 to setup-enfermeras
   create-turtles cant-enfermeras [
     set color blue
@@ -91,10 +101,13 @@ to setup-enfermeras
     set xcor max-pxcor - 2 - random 13
     set ycor max-pycor - 3 - random 4
     set shape "person"
-    set en-espera 1
+    set estado estado-libre
+    set n-paciente 0
   ]
 end
 
+;; Establece la configuracion para las tortugas camas
+;; Las ubica en la parte inferior izquierda
 to setup-camas
   let x 2
   let y 2
@@ -106,8 +119,9 @@ to setup-camas
       set xcor min-pxcor + x
       set ycor min-pycor + y
       set shape "square"
-      set en-espera 1
+      set estado estado-libre
       set size 1.5
+      set n-paciente 0
     ]
     set i i + 1
     set y y + 2
@@ -120,6 +134,8 @@ to setup-camas
   ]
 end
 
+;; Establece la configuracion para las tortugas quirofanos
+;; Los ubica en la parte superior izquierda
 to setup-quirofanos
   let x 2
   let y 5
@@ -131,8 +147,9 @@ to setup-quirofanos
       set xcor min-pxcor + x
       set ycor max-pycor - y
       set shape "square"
-      set en-espera 1
+      set estado estado-libre
       set size 3
+      set n-paciente 0
     ]
     set i i + 1
     set y y + 3
@@ -145,6 +162,8 @@ to setup-quirofanos
   ]
 end
 
+;; Establece la configuracion para las tortugas sillas
+;; Las ubica en el costado derecho
 to setup-sillas
   let x 2
   let y 3
@@ -156,8 +175,9 @@ to setup-sillas
       set xcor max-pxcor - x
       set ycor min-pycor + y
       set shape "square"
-      set en-espera 1
+      set estado estado-libre
       set size 1
+      set n-paciente 0
     ]
     set i i + 1
     set y y + 1
@@ -184,281 +204,388 @@ to setup-listas
   set lista-muy-graves []
 end
 
+to setup-estados
+  set estado-llegada 1 ;; Estado del paciente cuando llega al hospital
+  set estado-espera-enfermera 2 ;; Estado del paciente cuando esta en una silla a la espera de ser atendido por una enfermera
+  set estado-verificando-condicion 3 ;; Estado del paciente cuando se encuestran con la enfermera verificando la condicion de salud
+  set estado-espera-atencion 4 ;; Estado del paciente cuando espera a ser atendido por el doctor
+  set estado-en-quirofano 5 ;; Estado del paciente cuando se encuentra en un quirofano
+  set estado-esperando-cama 6 ;; Estado del paciente que esta esperado un cama
+  set estado-listo-para-salir 7 ;; Estado del paciente cuando se encuentra listo para salir
+  set estado-ocupado 0 ;; Estado de las tortugas que se encuentran ocupadas
+  set estado-libre 1 ;; Estado de las tortugas que se encuentran desocupadas
+end
+
+;; ------------------------------------------------Funciones------------------------------------------------------------------------------
+
 ;; Crea un paciente
 to crear-paciente
   create-turtles 1 [
     set color 136
     set tipo "paciente"
-    set xcor max-pxcor - random 13
-    set ycor min-pycor + random 13
+    set xcor max-pxcor - 1
+    set ycor min-pycor + 1
     set shape "person"
     set tiempo-de-vida 0
-    set en-espera 4
-    set enfer 0
-    set cam 0
-    set sill 0
+    set estado estado-llegada
   ]
 end
 
+;; Metodo para acomodar los pacientes en las sillas
+to acomodar-pacientes
+  let pacientes sort turtles with [ tipo = "paciente" and estado = estado-llegada ] ;; Lista de pacientes buscando una silla
+  let sillas sort turtles with [ tipo = "silla" and estado = estado-libre ] ;; Lista de sillas disponibles
+
+  while [(length pacientes > 0) and (length sillas > 0)][
+
+    let paciente (first pacientes) ;; Se obtiene primer paciente de la lista
+    let silla (first sillas) ;; Se obtiene primer silla de la lista
+
+    ;; Se modifica el paciente
+    ask turtle ([who] of paciente) [
+      move-to silla ;; Se mueve el paciente a la silla
+      set estado estado-espera-enfermera ;; El estado del paciente cambia a espera-enfermera
+    ]
+
+    ;; Se modifica la silla
+    ask turtle ([who] of silla) [
+      set estado estado-ocupado ;; El estado de la silla cambia a ocupada
+      set n-paciente paciente ;; Se asocia el paciente a la silla
+    ]
+
+    set pacientes remove-item 0 pacientes ;; Se elimina el paciente de la lista
+    set silla remove-item 0 sillas ;; Se elimina la silla de la lista
+  ]
+end
+
+;; Metodo para que las enfermeras atiendan a los pacientes
+to verificar-pacientes
+  let enfermeras sort turtles with [ tipo = "enfermera" and estado = estado-libre ] ;; Lista de enfermeras disponibles
+  let pacientes sort turtles with [ tipo = "paciente" and estado = estado-espera-enfermera ] ;; Lista de pacientes esperando por una enfermera
+
+  while [(length pacientes > 0) and (length enfermeras > 0)][
+
+    let paciente (first pacientes) ;; Se obtiene primer paciente de la lista
+    let enfermera (first enfermeras) ;; Se obtiene primer enfermera de la lista
+
+    ;; Se modifica la enfermera
+    ask turtle ([who] of enfermera) [
+      move-to paciente ;; Se mueve la enfermera a la posicion del paciente
+      set xcor (xcor - 1) ;; Se mueve la enfermera al costado izq del paciente
+      set estado estado-ocupado ;; El estado de la enfermera pasa a ocupado
+      set n-paciente paciente ;; Se asocia el paciente a la enfermera
+    ]
+
+    ;; Se modifica el paciente
+    ask turtle ([who] of paciente) [
+      set tiempo-condicion ((random-exponential prom-deteccion-condicion) + ticks) ;; Se establece el tiempo que durará la verificacion de la condicion
+      set estado estado-verificando-condicion ;; El estado del paciente cambia a verificando-condicion
+    ]
+
+    set pacientes remove-item 0 pacientes ;; Se elimina el paciente de la lista
+    set enfermeras remove-item 0 enfermeras ;; Se elimina la enfermera de la lista
+  ]
+end
+
+;; Metodo para verificar la condicion del paciente
+to verificar-condicion
+  let pacientes sort turtles with [ tipo = "paciente" and estado = estado-verificando-condicion and tiempo-condicion <= ticks] ;; Lista de pacientes listos para saber su condicion
+
+  while [length pacientes > 0][
+
+    let paciente (first pacientes) ;; Se obtiene primer paciente de la lista
+
+    let proba random 100 ;; Numero aleatorio que indicara la condicion
+    let colorP 0 ;; variable para el nuevo color del paciente
+    let condicion 0 ;; variable para la nueva condicion del paciente
+    let tiempoVida 0 ;; variable para el tiempo de vida que le queda al paciente
+
+    (ifelse
+      proba <= %-leve [
+        set condicion 1 ;; Nueva condicion es leve
+        set colorP green ;; Nuevo color es verde
+        set tiempoVida (ticks + (random-poisson prom-espera-leve)) ;; Tiempo de vida
+      ]
+      proba <= %-grave [
+        set condicion 2 ;; Nueva condicion es grave
+        set colorP yellow ;; Nuevo color es amarillo
+        set tiempoVida (ticks + (random-poisson prom-espera-grave)) ;; Tiempo de vida
+      ]
+      proba <= %-muy-grave [
+        set condicion 3 ;; Nueva condicion es muy-grave
+        set colorP red ;; Nuevo color es rojo
+        set tiempoVida (ticks + (random-poisson prom-espera-muy-grave)) ;; Tiempo de vida
+    ])
+
+    ;; Se modifica el paciente
+    ask turtle ([who] of paciente) [
+      set categoria condicion ;; Se le cambia la categoria segun la condicion
+      set color colorP ;; Se le cambia el color segun la condicion
+      set tiempo-de-vida tiempoVida ;; Se le establece el tiempo de vida segun la condicion
+      set estado estado-espera-atencion ;; El estado del paciente cambia a espera-atencion
+    ]
+
+    ask turtles with [tipo = "enfermera" and n-paciente = paciente] [
+      ;; Se mueve la enfermera a un puesto inicial
+      set xcor max-pxcor - 2 - random 13
+      set ycor max-pycor - 3 - random 4
+      ;;
+      set estado estado-libre ;; La enfermera pasa a estar libre
+    ]
+
+    set pacientes remove-item 0 pacientes ;; Se elimina el paciente de la lista
+  ]
+end
+
+;; Metodo para atender a un paciente
 to atender-paciente
-  let pacientes sort-by [[t1 t2] -> [categoria] of t1 > [categoria] of t2] turtles with [ tipo = "paciente" and en-espera = 1 ]
+  let pacientes sort-by [[t1 t2] -> [categoria] of t1 > [categoria] of t2] turtles with [ tipo = "paciente" and estado = estado-espera-atencion ] ;; Lista de pacientes esperando un doctor ordenada por condicion del paciente
+
   if length pacientes > 0 [
-    let paciente (first pacientes)
-     (ifelse
-      ([categoria] of paciente) = 1 [
+
+    let paciente (first pacientes) ;; Se obtiene primer paciente de la lista
+
+     (ifelse ;; Se procesa el paciente segun la categoría
+      ([categoria] of paciente) = 1 [ ;; Categoría leve
         atender-leve paciente
       ]
-      ([categoria] of paciente) = 2 [
+      ([categoria] of paciente) = 2 [ ;; Categoría grave
         atender-grave paciente
       ]
-      ([categoria] of paciente) = 3 [
+      ([categoria] of paciente) = 3 [ ;; Categoría muy-grave
         atender-muy-grave paciente
       ]
   )]
 end
 
+;; Metodo para atender un paciente leve
 to atender-leve [paciente]
-  if doctores-desocupados >= 1 [
-    ask one-of turtles with [tipo = "doctor" and en-espera = 1] [
-      move-to paciente
-      set xcor xcor - 1
-      set en-espera 0
-      set n-paciente paciente
-    ]
+  if doctores-desocupados >= 1 [ ;; Se verifica disponibilidad de doctores
 
-    set doctores-desocupados (doctores-desocupados - 1)
-
+    ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      set en-espera 0
-      set tiempo-atencion ((random-poisson prom-atencion-leve) + ticks)
+      set tiempo-atencion ((random-poisson prom-atencion-leve) + ticks) ;; Se le establece el tiempo de atencion
+      set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
+
+    ;; Se modifica el doctor
+    ask one-of turtles with [tipo = "doctor" and estado = estado-libre ] [
+      move-to paciente ;; Se mueve el doctor a la posicion del paciente
+      set xcor xcor - 1 ;; Se mueve el doctor al costado del paciente
+      set estado estado-ocupado ;; El doctor pasa a estar ocupado
+      set n-paciente paciente ;; Se asocia el paciente al doctor
+    ]
+
+    set doctores-desocupados (doctores-desocupados - 1) ;; Se disminuye cantidad de doctores libres
   ]
 end
 
 to atender-grave [paciente]
-  let quirofanos sort turtles with [ tipo = "quirofano" and en-espera = 1 ]
-  if doctores-desocupados >= 3 and length quirofanos > 0 [
-    let quiro (first quirofanos)
+  let quirofanos sort turtles with [ tipo = "quirofano" and estado = estado-libre ] ;; Lista de quirofanos disponibles
+
+  if doctores-desocupados >= 3 and length quirofanos > 0 [  ;; Se verifica disponibilidad de doctores y quirofanos
+
+    let quiro (first quirofanos) ;; Se obtiene el primer quirofano
+
+    ;; Se modifica el quirofano
     ask turtle ([who] of quiro) [
-      set en-espera 0
+      set estado estado-ocupado ;; El estado del quirofano pasa a ocupado
+      set n-paciente paciente ;; Se asocia el paciente al quirofano
     ]
 
+    ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      move-to quiro
-      set tiempo-atencion ((random-poisson prom-atencion-grave) + ticks)
-      ask turtle ([who] of sill) [
-        set en-espera 1
-      ]
-      set en-espera 0
-      set sill 0
+      move-to quiro ;; Mover el paciente al quirofano
+      set tiempo-atencion ((random-poisson prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
+      set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
 
-    ask n-of 3 turtles with [tipo = "doctor" and en-espera = 1] [
+    ;; Desocupar silla
+    ask turtles with [tipo = "silla" and n-paciente = paciente] [
+        set estado estado-libre ;; La silla pasa a estar libre
+    ]
+
+    ;; Se modifican los doctores
+    ask n-of 3 turtles with [tipo = "doctor" and estado = estado-libre ] [
+      ;; Se colocan los doctores rodeando al paciente
       move-to paciente
       set xcor xcor - 1
       set ycor ycor - 1
       set xcor xcor + random 3
       set ycor ycor + random 3
-      set en-espera 0
-      set n-paciente paciente
+      ;;
+      set estado estado-ocupado ;; Los doctores pasan a estar ocupados
+      set n-paciente paciente ;; Se asocia el paciente a los doctores
     ]
 
-    set doctores-desocupados (doctores-desocupados - 3)
+    set doctores-desocupados (doctores-desocupados - 3) ;; Se disminuye cantidad de doctores libres
   ]
 end
 
 to atender-muy-grave [paciente]
-  let quirofanos sort turtles with [ tipo = "quirofano" and en-espera = 1 ]
-  if doctores-desocupados >= 5 and length quirofanos > 0 [
-    let quiro (first quirofanos)
+  let quirofanos sort turtles with [ tipo = "quirofano" and estado = estado-libre ] ;; Lista de quirofanos disponibles
+
+  if doctores-desocupados >= 5 and length quirofanos > 0 [  ;; Se verifica disponibilidad de doctores y quirofanos
+
+    let quiro (first quirofanos) ;; Se obtiene el primer quirofano
+
+    ;; Se modifica el quirofano
     ask turtle ([who] of quiro) [
-      set en-espera 0
+      set estado estado-ocupado ;; El estado del quirofano pasa a ocupado
+      set n-paciente paciente ;; Se asocia el paciente al quirofano
     ]
 
+    ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      move-to quiro
-      set tiempo-atencion ((random-poisson prom-atencion-muy-grave) + ticks)
-      ask turtle ([who] of sill) [
-        set en-espera 1
-      ]
-      set en-espera 0
-      set sill 0
+      move-to quiro ;; Se mueve el paciente al quirofano
+      set tiempo-atencion ((random-poisson prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
+      set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
 
-    ask n-of 5 turtles with [tipo = "doctor" and en-espera = 1] [
+    ;; Desocupar silla
+    ask turtles with [tipo = "silla" and n-paciente = paciente] [
+        set estado estado-libre ;; La silla pasa a estar libre
+    ]
+
+    ;; Se modifican los doctores
+    ask n-of 5 turtles with [tipo = "doctor" and estado = estado-libre ] [
+      ;; Se colocan los doctores rodeando al paciente
       move-to paciente
       set xcor xcor - 1
       set ycor ycor - 1
       set xcor xcor + random 3
       set ycor ycor + random 3
-      set en-espera 0
-      set n-paciente paciente
+      ;;
+      set estado estado-ocupado ;; Los doctores pasan a estar ocupados
+      set n-paciente paciente ;; Se asocia el paciente a los doctores
     ]
 
-    set doctores-desocupados (doctores-desocupados - 5)
+    set doctores-desocupados (doctores-desocupados - 5) ;; Se disminuye cantidad de doctores libres
   ]
 end
 
-to verificar-muertes
-  ask turtles with [ tipo = "paciente" and tiempo-de-vida != 0 and tiempo-de-vida < ticks] [
-    set num-muertes (num-muertes + 1)
-    if(enfer != 0)[
-      ask turtle ([who] of enfer) [
-        set xcor 2 + random 13
-        set ycor 2 + random 13
-        set en-espera 1
-      ]
-    ]
-    if(cam != 0)[
-      ask turtle ([who] of cam) [
-        set en-espera 1
-      ]
-    ]
-    if(sill != 0)[
-      ask turtle ([who] of sill) [
-        set en-espera 1
-      ]
-    ]
-    die
-  ]
-end
-
-to acomodar-pacientes
-  let sillas sort turtles with [ tipo = "silla" and en-espera = 1 ]
-  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 4 ]
-  while [(length pacientes > 0) and (length sillas > 0)][
-    let paciente (first pacientes)
-    let silla (first sillas)
-
-    ask turtle ([who] of paciente) [
-      move-to silla
-      set en-espera 3
-      set sill silla
-    ]
-
-    ask turtle ([who] of silla) [
-      set en-espera 0
-    ]
-
-    set pacientes remove-item 0 pacientes
-    set silla remove-item 0 sillas
-  ]
-end
-
-
-to verificar-pacientes
-  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 3 ]
-  let enfermeras sort turtles with [ tipo = "enfermera" and en-espera = 1 ]
-  while [(length pacientes > 0) and (length enfermeras > 0)][
-    let paciente (first pacientes)
-    let enfermera (first enfermeras)
-
-    ask turtle ([who] of enfermera) [
-      move-to paciente
-      set xcor (xcor - 1)
-      set en-espera 0
-    ]
-
-    ask turtle ([who] of paciente) [
-      set tiempo-condicion ((random-exponential prom-deteccion-condicion) + ticks)
-      set enfer enfermera
-      set en-espera 2
-    ]
-
-    set pacientes remove-item 0 pacientes
-    set enfermeras remove-item 0 enfermeras
-  ]
-end
-
-to verificar-condicion
-  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 2 and tiempo-condicion <= ticks]
-  while [length pacientes > 0][
-
-    let paciente (first pacientes)
-    let enfermera 1
-
-    let proba random 100
-    let colorP 1
-    let condicion 1
-    let tiempoVida 1
-
-    (ifelse
-      proba <= %-leve [
-        set condicion 1
-        set colorP 55
-        set tiempoVida (ticks + (random-poisson prom-espera-leve))
-      ]
-      proba <= %-grave [
-        set condicion 2
-        set colorP 45
-        set tiempoVida (ticks + (random-poisson prom-espera-grave))
-      ]
-      proba <= %-muy-grave [
-        set condicion 3
-        set colorP 15
-        set tiempoVida (ticks + (random-poisson prom-espera-muy-grave))
-    ])
-
-    ask turtle ([who] of paciente) [
-      set en-espera 1
-      set color colorP
-      set categoria condicion
-      set tiempo-de-vida tiempoVida
-      set enfermera enfer
-      set enfer 0
-    ]
-
-    ask turtle ([who] of enfermera) [
-      set xcor max-pxcor - 2 - random 13
-      set ycor max-pycor - 3 - random 4
-      set en-espera 1
-    ]
-
-    set pacientes remove-item 0 pacientes
-  ]
-end
-
+;; Metodo para verificar los pacientes que terminan de ser atendidos
 to verificar-fin-atencion
-  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 0 and tiempo-atencion <= ticks]
+  let pacientes sort turtles with [ tipo = "paciente" and estado = estado-en-quirofano and tiempo-atencion <= ticks] ;; Lista de pacientes que terminan de ser atendidos
+
   while [length pacientes > 0][
-    let paciente (first pacientes)
+
+    let paciente (first pacientes) ;; Se obtiene el primer paciente
+
+    ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      set en-espera -1
-      if (categoria = 1)[
-        set en-espera -2
+      set estado estado-esperando-cama ;; El paciente pasa a estar esperando cama
+      if (categoria = 1)[ ;; Paciente con condicion leve
+        set estado estado-listo-para-salir ;; Los pacientes leves pasan a estar listos-para-salir
+        set doctores-desocupados (doctores-desocupados + 1) ;; Aumentamos cantidad de doctomer libres
+      ]
+      if (categoria = 2)[ ;; Paciente con condicion grave
+        set doctores-desocupados (doctores-desocupados + 3) ;; Aumentamos cantidad de doctomer libres
+      ]
+      if (categoria = 3)[ ;; Paciente con condicion muy-grave
+        set doctores-desocupados (doctores-desocupados + 5) ;; Aumentamos cantidad de doctomer libres
       ]
     ]
 
+    ;; Se modifican los doctores
     ask turtles with [tipo = "doctor" and n-paciente = paciente] [
+      ;; Se mueven los doctores a un puesto inicial
       set xcor min-pxcor + 1 + random 15
       set ycor max-pycor - 1 - random 3
-      set en-espera 1
-      set n-paciente 0
+      ;;
+      set estado estado-libre ;; El estado de los doctores pasa a libre
+      set n-paciente 0 ;; Se elimina la asociacion de los doctores con el paciente
     ]
 
-    set pacientes remove-item 0 pacientes
+    set pacientes remove-item 0 pacientes ;; Se elimina el paciente de la lista
   ]
 end
 
 to acomodar-pacientes-reposo
-  let camas sort turtles with [ tipo = "cama" and en-espera = 1 ]
-  let pacientes sort turtles with [ tipo = "paciente" and en-espera = -1 ]
+  let pacientes sort turtles with [ tipo = "paciente" and estado = estado-esperando-cama ] ;; Lista de pacientes esperando cama
+  let camas sort turtles with [ tipo = "cama" and estado = estado-libre ] ;; Lista de camas disponibles
+
   while [(length pacientes > 0) and (length camas > 0)][
-    let paciente (first pacientes)
-    let cama (first camas)
 
+    let paciente (first pacientes) ;; Se obtiene el primer paciente
+    let cama (first camas) ;; Se obtiene la primer cama
+
+    ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      move-to cama
-      set en-espera -2
-      set cam cama
+      move-to cama ;; Se mueve el paciente a la cama
+      set estado estado-listo-para-salir ;; El paciente pasa a estar listo-para-salir
     ]
 
+    ;; Se ocupa la cama
     ask turtle ([who] of cama) [
-      set en-espera 0
+      set estado estado-ocupado ;; El estado de la cama pasa a libre
+      set n-paciente paciente ;; Se asociacion la cama con el paciente
     ]
 
-    set pacientes remove-item 0 pacientes
-    set camas remove-item 0 camas
+    ;; Se libera el quirofano en el que estaba el paciente
+    ask turtles with [tipo = "quirofano" and n-paciente = paciente] [
+      set estado estado-libre ;; El estado del quirofano pasa a libre
+      set n-paciente 0 ;; Se elimina la asociacion del quirofano con el paciente
+    ]
+
+    set pacientes remove-item 0 pacientes ;; Se elimina el paciente de la lista
+    set camas remove-item 0 camas ;; Se elimina la cama de la lista
+  ]
+end
+
+;; Metodo para verificar los pacientes que mueren
+to verificar-muertes
+  let pacientes sort turtles with [ tipo = "paciente" and tiempo-de-vida != 0 and tiempo-de-vida < ticks ] ;; Lista de pacientes muertos
+
+  while [length pacientes > 0] [
+
+    let paciente (first pacientes) ;; Se obtiene el primer paciente
+
+    ;; Desocupar silla (si es necesario)
+    ask turtles with [tipo = "silla" and n-paciente = paciente] [
+      set estado estado-libre ;; El estado de la silla pasa a libre
+      set n-paciente 0 ;; Se elimina la asociacion de la silla con el paciente
+    ]
+
+    ;; Desocupar cama (si es necesario)
+    ask turtles with [tipo = "cama" and n-paciente = paciente] [
+      set estado estado-libre ;; El estado de la cama pasa a libre
+      set n-paciente 0 ;; Se elimina la asociacion de la cama con el paciente
+    ]
+
+    ;; Se libera el quirofano en el que estaba el paciente (si es necesario)
+    ask turtles with [tipo = "quirofano" and n-paciente = paciente] [
+      set estado estado-libre ;; El estado del quirofano pasa a libre
+      set n-paciente 0 ;; Se elimina la asociacion del quirofano con el paciente
+    ]
+
+    ;; Se liberan los doctores (si es necesario)
+    ask turtles with [tipo = "doctor" and n-paciente = paciente] [
+      ;; Se mueven los doctores a un puesto inicial
+      set xcor min-pxcor + 1 + random 15
+      set ycor max-pycor - 1 - random 3
+      ;;
+      set estado estado-libre ;; El estado de los doctores pasa a libre
+      set n-paciente 0 ;; Se elimina la asociacion de los doctores con el paciente
+    ]
+
+    ;; Se liberan la enfermera (si es necesario)
+    ask turtles with [tipo = "enfermera" and n-paciente = paciente] [
+      ;; Se mueve la enfermera a un puesto inicial
+      set xcor max-pxcor - 2 - random 13
+      set ycor max-pycor - 3 - random 4
+      ;;
+      set estado estado-libre ;; El estado de la enfermera pasa a libre
+      set n-paciente 0 ;; Se elimina la asociacion de la enfermera con el paciente
+    ]
+
+    ;; Se elimina el paciente
+    ask turtle ([who] of paciente) [
+      die ;; Se elimina la tortuga paciente
+    ]
+
+    set pacientes remove-item 0 pacientes ;; Se elimina el paciente de la lista
+    set num-muertes (num-muertes + 1) ;; Se aumenta la cantidad de muertes
   ]
 end
 
@@ -500,7 +627,7 @@ cant-camas
 cant-camas
 0
 49
-21.0
+9.0
 1
 1
 NIL
@@ -515,7 +642,7 @@ cant-salas
 cant-salas
 0
 20
-10.0
+9.0
 1
 1
 NIL
@@ -545,7 +672,7 @@ pacientes-minuto
 pacientes-minuto
 0
 100
-5.0
+3.0
 1
 1
 NIL
@@ -673,7 +800,7 @@ MONITOR
 203
 519
 pacientes-leves-SA
-count turtles with [categoria = 3]
+count turtles with [categoria = 1]
 17
 1
 11
@@ -695,7 +822,7 @@ MONITOR
 590
 519
 pacientes-muy-graves-SA
-count turtles with [ categoria = 1]
+count turtles with [ categoria = 3]
 17
 1
 11
@@ -724,7 +851,7 @@ prom-espera-grave
 prom-espera-grave
 0
 500
-111.0
+139.0
 1
 1
 min
@@ -739,7 +866,7 @@ prom-espera-muy-grave
 prom-espera-muy-grave
 0
 500
-60.0
+90.0
 1
 1
 min
@@ -769,7 +896,7 @@ prom-atencion-grave
 prom-atencion-grave
 0
 100
-5.0
+2.0
 1
 1
 min
