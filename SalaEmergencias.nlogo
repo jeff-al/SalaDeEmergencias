@@ -22,6 +22,7 @@ turtles-own [
   en-espera
   tiempo-condicion
   enfer
+  cam
 ]
 
 ;; Inicializa el ambiente para su ejecucion
@@ -134,6 +135,7 @@ to crear-paciente
     set tiempo-de-vida (ticks + (random-poisson prom-espera-leve))
     set en-espera 4
     set enfer 0
+    set cam 0
   ]
 end
 
@@ -205,6 +207,12 @@ to verificar-muertes
         set en-espera 1
       ]
     ]
+    if(cam != 0)[
+      let cama cam
+      ask turtle ([who] of cama) [
+        set en-espera 1
+      ]
+    ]
     die
   ]
 end
@@ -219,6 +227,7 @@ to acomodar-pacientes
     ask turtle ([who] of paciente) [
       move-to cama
       set en-espera 3
+      set cam cama
     ]
 
     ask turtle ([who] of cama) [
@@ -543,7 +552,7 @@ prom-espera-leve
 prom-espera-leve
 0
 500
-8.0
+100.0
 1
 1
 min
@@ -558,7 +567,7 @@ prom-espera-grave
 prom-espera-grave
 0
 500
-6.0
+60.0
 1
 1
 min
@@ -573,7 +582,7 @@ prom-espera-muy-grave
 prom-espera-muy-grave
 0
 500
-4.0
+30.0
 1
 1
 min
@@ -633,7 +642,7 @@ prom-deteccion-condicion
 prom-deteccion-condicion
 0
 100
-50.0
+30.0
 1
 1
 min
