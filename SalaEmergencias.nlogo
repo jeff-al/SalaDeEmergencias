@@ -90,7 +90,7 @@ to setup-camas
   let i 0
   repeat cant-camas[
     create-turtles 1 [
-      set color 127
+      set color 33
       set tipo "cama"
       set xcor min-pxcor + x
       set ycor min-pycor + y

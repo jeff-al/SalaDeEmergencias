@@ -90,7 +90,7 @@ to setup-camas
   let i 0
   repeat cant-camas[
     create-turtles 1 [
-      set color 127
+      set color 3
       set tipo "cama"
       set xcor min-pxcor + x
       set ycor min-pycor + y
@@ -290,7 +290,7 @@ to verificar-pacientes
 end
 
 to verificar-condicion
-  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 2 and tiempo-condicion > ticks]
+  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 2 and tiempo-condicion <= ticks]
   while [length pacientes > 0][
 
     let paciente (first pacientes)
