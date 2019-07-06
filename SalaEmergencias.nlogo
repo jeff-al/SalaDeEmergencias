@@ -96,6 +96,7 @@ to setup-camas
       set ycor min-pycor + y
       set shape "square"
       set en-espera 1
+      set size 1.5
     ]
     set i i + 1
     set y y + 2
@@ -122,6 +123,7 @@ to setup-listas
   set lista-muy-graves []
 end
 
+;; Crea un paciente
 to crear-paciente
   create-turtles 1 [
     set color 136
@@ -131,51 +133,7 @@ to crear-paciente
     set shape "person"
     set tiempo-de-vida (ticks + (random-poisson prom-espera-leve))
     set en-espera 4
-  ]
-end
-
-;; Crea un paciente leve
-;; Lo ubica en la parte inferior derecha
-to crear-paciente-leve
-  create-turtles 1 [
-    set color green
-    set categoria 3
-    set tipo "paciente"
-    set xcor max-pxcor - random 13
-    set ycor min-pycor + random 13
-    set shape "person"
-    set tiempo-de-vida (ticks + (random-poisson prom-espera-leve))
-    set en-espera 2
-  ]
-end
-
-;; Crea un paciente grave
-;; Lo ubica en la parte inferior derecha
-to crear-paciente-grave
-  create-turtles 1 [
-    set color yellow
-    set categoria 2
-    set tipo "paciente"
-    set xcor 2 + random 13
-    set ycor -2 - random 13
-    set shape "person"
-    set tiempo-de-vida (ticks + (random-poisson prom-espera-grave))
-    set en-espera 2
-  ]
-end
-
-;; Crea un paciente muy grave
-;; Lo ubica en la parte inferior derecha
-to crear-paciente-muy-grave
-  create-turtles 1 [
-    set color red
-    set categoria 1
-    set tipo "paciente"
-    set xcor 2 + random 13
-    set ycor -2 - random 13
-    set shape "person"
-    set tiempo-de-vida (ticks + (random-poisson prom-espera-muy-grave))
-    set en-espera 2
+    set enfer 0
   ]
 end
 
@@ -239,6 +197,14 @@ end
 to verificar-muertes
   ask turtles with [ tipo = "paciente" and tiempo-de-vida < ticks] [
     set num-muertes (num-muertes + 1)
+    if(enfer != 0)[
+      let enfermera enfer
+      ask turtle ([who] of enfermera) [
+        set xcor 2 + random 13
+        set ycor 2 + random 13
+        set en-espera 1
+      ]
+    ]
     die
   ]
 end
@@ -318,6 +284,7 @@ to verificar-condicion
       set color colorP
       set categoria condicion
       set enfermera enfer
+      set enfer 0
     ]
 
     ask turtle ([who] of enfermera) [
@@ -367,7 +334,7 @@ cant-camas
 cant-camas
 0
 50
-5.0
+15.0
 1
 1
 NIL
@@ -576,7 +543,7 @@ prom-espera-leve
 prom-espera-leve
 0
 500
-500.0
+8.0
 1
 1
 min
@@ -591,7 +558,7 @@ prom-espera-grave
 prom-espera-grave
 0
 500
-250.0
+6.0
 1
 1
 min
@@ -606,7 +573,7 @@ prom-espera-muy-grave
 prom-espera-muy-grave
 0
 500
-60.0
+4.0
 1
 1
 min
@@ -666,7 +633,7 @@ prom-deteccion-condicion
 prom-deteccion-condicion
 0
 100
-100.0
+50.0
 1
 1
 min
