@@ -164,26 +164,23 @@ end
 
 to atender-leve [paciente]
   if doctores-desocupados >= 1 [
-    show "leve"
   ]
 end
 
 to atender-grave [paciente]
   if doctores-desocupados >= 3 [
-    show "grave"
   ]
 end
 
 to atender-muy-grave [paciente]
   if doctores-desocupados >= 5 [
-    show "muy grave"
   ]
 end
 
 to verificar-muertes
   ask turtles with [ tipo = "paciente" and tiempo-de-vida < ticks] [
-    die
     set num-muertes (num-muertes + 1)
+    die
   ]
 end
 @#$#@#$#@
@@ -352,10 +349,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-15
-66
-101
-111
+437
+299
+561
+344
 NIL
 num-muertes
 17
