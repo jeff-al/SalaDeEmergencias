@@ -13,16 +13,21 @@ globals [
   lista-leves
   lista-graves
   lista-muy-graves
+
+  prom-tiempo-reposo
 ]
 
 turtles-own [
-  tipo
-  categoria
-  tiempo-de-vida
-  en-espera
-  tiempo-condicion
-  enfer
-  cam
+  tipo ;; Tipo de paciente
+  categoria ;; Categoria del paciente 1 (leve), 2 (grave), 3 (muy grave)
+  tiempo-de-vida ;; Tiempo de vida del paciente
+  en-espera ;; Estado del paciente en dado momento
+  tiempo-condicion ;; Tiempo que se dura en determinar la condicion del paciente
+  enfer ;; Enfermera encargada de hacer la revision del paciente, 0 si la enfermera ya no esta a cargo del paciente
+  cam ;; Cama en la que se encuentra el paciente, 0 si no esta en ninguna cama
+  sill ;; silla en la que se sienta el paciente
+  tiempo-atencion ;; Tiempo que se va a durar ateniendo al paciente
+  n-paciente ;; doctores que atienden al paciente, 0 si el doc ya no esta a cargo
 ]
 
 ;; Inicializa el ambiente para su ejecucion
@@ -47,15 +52,19 @@ to go
   verificar-pacientes
   verificar-condicion
   atender-paciente
+  verificar-fin-atencion
+  acomodar-pacientes-reposo
   verificar-muertes
   tick
 end
 
 ;; Establece la configuracion de las tortugas
 to setup-turtles
+  setup-camas
+  setup-sillas
+  setup-quirofanos
   setup-doctores
   setup-enfermeras
-  setup-camas
 end
 
 
@@ -65,10 +74,11 @@ to setup-doctores
   create-turtles cant-doctores [
     set color white
     set tipo "doctor"
-    set xcor -2 - random 13
-    set ycor 2 + random 13
+    set xcor min-pxcor + 1 + random 15
+    set ycor max-pycor - 1 - random 3
     set shape "person"
     set en-espera 1
+    set n-paciente -1
   ]
 end
 
@@ -78,8 +88,8 @@ to setup-enfermeras
   create-turtles cant-enfermeras [
     set color blue
     set tipo "enfermera"
-    set xcor 2 + random 13
-    set ycor 2 + random 13
+    set xcor max-pxcor - 2 - random 13
+    set ycor max-pycor - 3 - random 4
     set shape "person"
     set en-espera 1
   ]
@@ -101,9 +111,59 @@ to setup-camas
     ]
     set i i + 1
     set y y + 2
-    ;; cantidad de camas por fila 5
-    if i = 5 [
+    ;; cantidad de camas por fila 8
+    if i = 7 [
       set y 2
+      set x x + 2
+      set i 0
+    ]
+  ]
+end
+
+to setup-quirofanos
+  let x 2
+  let y 5
+  let i 0
+  repeat cant-salas[
+    create-turtles 1 [
+      set color 6
+      set tipo "quirofano"
+      set xcor min-pxcor + x
+      set ycor max-pycor - y
+      set shape "square"
+      set en-espera 1
+      set size 3
+    ]
+    set i i + 1
+    set y y + 3
+    ;; cantidad de camas por fila 8
+    if i = 4 [
+      set y 5
+      set x x + 3
+      set i 0
+    ]
+  ]
+end
+
+to setup-sillas
+  let x 2
+  let y 3
+  let i 0
+  repeat 154[
+    create-turtles 1 [
+      set color black
+      set tipo "silla"
+      set xcor max-pxcor - x
+      set ycor min-pycor + y
+      set shape "square"
+      set en-espera 1
+      set size 1
+    ]
+    set i i + 1
+    set y y + 1
+    ;; cantidad de camas por fila 8
+    if i = 22 [
+      set y 3
       set x x + 2
       set i 0
     ]
@@ -132,26 +192,27 @@ to crear-paciente
     set xcor max-pxcor - random 13
     set ycor min-pycor + random 13
     set shape "person"
-    set tiempo-de-vida (ticks + (random-poisson prom-espera-leve))
+    set tiempo-de-vida 0
     set en-espera 4
     set enfer 0
-
+    set cam 0
+    set sill 0
   ]
 end
 
 to atender-paciente
-  let pacientes sort-by [[t1 t2] -> [categoria] of t1 < [categoria] of t2] turtles with [ tipo = "paciente" and en-espera = 1 ]
+  let pacientes sort-by [[t1 t2] -> [categoria] of t1 > [categoria] of t2] turtles with [ tipo = "paciente" and en-espera = 1 ]
   if length pacientes > 0 [
     let paciente (first pacientes)
      (ifelse
-      ([categoria] of paciente) = 3 [
-      atender-leve paciente
+      ([categoria] of paciente) = 1 [
+        atender-leve paciente
       ]
       ([categoria] of paciente) = 2 [
-      atender-grave paciente
+        atender-grave paciente
       ]
-      ([categoria] of paciente) = 1 [
-      atender-muy-grave paciente
+      ([categoria] of paciente) = 3 [
+        atender-muy-grave paciente
       ]
   )]
 end
@@ -159,57 +220,102 @@ end
 to atender-leve [paciente]
   if doctores-desocupados >= 1 [
     ask one-of turtles with [tipo = "doctor" and en-espera = 1] [
-      create-link-to paciente
-      set doctores-desocupados (doctores-desocupados - 1)
+      move-to paciente
+      set xcor xcor - 1
       set en-espera 0
+      set n-paciente paciente
     ]
+
+    set doctores-desocupados (doctores-desocupados - 1)
+
     ask turtle ([who] of paciente) [
       set en-espera 0
+      set tiempo-atencion ((random-poisson prom-atencion-leve) + ticks)
     ]
   ]
 end
 
 to atender-grave [paciente]
-  if doctores-desocupados >= 3 [
-    ask n-of 3 turtles with [tipo = "doctor" and en-espera = 1] [
-      create-link-to paciente
-      set doctores-desocupados (doctores-desocupados - 3)
+  let quirofanos sort turtles with [ tipo = "quirofano" and en-espera = 1 ]
+  if doctores-desocupados >= 3 and length quirofanos > 0 [
+    let quiro (first quirofanos)
+    ask turtle ([who] of quiro) [
       set en-espera 0
     ]
+
     ask turtle ([who] of paciente) [
+      move-to quiro
+      set tiempo-atencion ((random-poisson prom-atencion-grave) + ticks)
+      ask turtle ([who] of sill) [
+        set en-espera 1
+      ]
       set en-espera 0
+      set sill 0
     ]
+
+    ask n-of 3 turtles with [tipo = "doctor" and en-espera = 1] [
+      move-to paciente
+      set xcor xcor - 1
+      set ycor ycor - 1
+      set xcor xcor + random 3
+      set ycor ycor + random 3
+      set en-espera 0
+      set n-paciente paciente
+    ]
+
+    set doctores-desocupados (doctores-desocupados - 3)
   ]
 end
 
 to atender-muy-grave [paciente]
-  if doctores-desocupados >= 5 [
-    ask one-of turtles with [tipo = "doctor" and en-espera = 1] [
-      create-link-to paciente
-      ;;move-to paciente
-      set doctores-desocupados (doctores-desocupados - 5)
+  let quirofanos sort turtles with [ tipo = "quirofano" and en-espera = 1 ]
+  if doctores-desocupados >= 5 and length quirofanos > 0 [
+    let quiro (first quirofanos)
+    ask turtle ([who] of quiro) [
       set en-espera 0
     ]
+
     ask turtle ([who] of paciente) [
+      move-to quiro
+      set tiempo-atencion ((random-poisson prom-atencion-muy-grave) + ticks)
+      ask turtle ([who] of sill) [
+        set en-espera 1
+      ]
       set en-espera 0
+      set sill 0
     ]
+
+    ask n-of 5 turtles with [tipo = "doctor" and en-espera = 1] [
+      move-to paciente
+      set xcor xcor - 1
+      set ycor ycor - 1
+      set xcor xcor + random 3
+      set ycor ycor + random 3
+      set en-espera 0
+      set n-paciente paciente
+    ]
+
+    set doctores-desocupados (doctores-desocupados - 5)
   ]
 end
 
 to verificar-muertes
-  ask turtles with [ tipo = "paciente" and tiempo-de-vida < ticks] [
+  ask turtles with [ tipo = "paciente" and tiempo-de-vida != 0 and tiempo-de-vida < ticks] [
     set num-muertes (num-muertes + 1)
     if(enfer != 0)[
-      let enfermera enfer
-      ask turtle ([who] of enfermera) [
+      ask turtle ([who] of enfer) [
         set xcor 2 + random 13
         set ycor 2 + random 13
         set en-espera 1
       ]
     ]
     if(cam != 0)[
-      let cama cam
-      ask turtle ([who] of cama) [
+      ask turtle ([who] of cam) [
+        set en-espera 1
+      ]
+    ]
+    if(sill != 0)[
+      ask turtle ([who] of sill) [
         set en-espera 1
       ]
     ]
@@ -218,24 +324,24 @@ to verificar-muertes
 end
 
 to acomodar-pacientes
-  let camas sort turtles with [ tipo = "cama" and en-espera = 1 ]
+  let sillas sort turtles with [ tipo = "silla" and en-espera = 1 ]
   let pacientes sort turtles with [ tipo = "paciente" and en-espera = 4 ]
-  while [(length pacientes > 0) and (length camas > 0)][
+  while [(length pacientes > 0) and (length sillas > 0)][
     let paciente (first pacientes)
-    let cama (first camas)
+    let silla (first sillas)
 
     ask turtle ([who] of paciente) [
-      move-to cama
+      move-to silla
       set en-espera 3
-      set cam cama
+      set sill silla
     ]
 
-    ask turtle ([who] of cama) [
+    ask turtle ([who] of silla) [
       set en-espera 0
     ]
 
     set pacientes remove-item 0 pacientes
-    set camas remove-item 0 camas
+    set silla remove-item 0 sillas
   ]
 end
 
@@ -274,37 +380,89 @@ to verificar-condicion
     let proba random 100
     let colorP 1
     let condicion 1
+    let tiempoVida 1
+
     (ifelse
       proba <= %-leve [
         set condicion 1
         set colorP 55
+        set tiempoVida (ticks + (random-poisson prom-espera-leve))
       ]
       proba <= %-grave [
         set condicion 2
         set colorP 45
+        set tiempoVida (ticks + (random-poisson prom-espera-grave))
       ]
       proba <= %-muy-grave [
         set condicion 3
         set colorP 15
+        set tiempoVida (ticks + (random-poisson prom-espera-muy-grave))
     ])
 
     ask turtle ([who] of paciente) [
       set en-espera 1
       set color colorP
       set categoria condicion
+      set tiempo-de-vida tiempoVida
       set enfermera enfer
       set enfer 0
     ]
 
     ask turtle ([who] of enfermera) [
-      set xcor 2 + random 13
-      set ycor 2 + random 13
+      set xcor max-pxcor - 2 - random 13
+      set ycor max-pycor - 3 - random 4
       set en-espera 1
     ]
 
     set pacientes remove-item 0 pacientes
   ]
 end
+
+to verificar-fin-atencion
+  let pacientes sort turtles with [ tipo = "paciente" and en-espera = 0 and tiempo-atencion <= ticks]
+  while [length pacientes > 0][
+    let paciente (first pacientes)
+    ask turtle ([who] of paciente) [
+      set en-espera -1
+      if (categoria = 1)[
+        set en-espera -2
+      ]
+    ]
+
+    ask turtles with [tipo = "doctor" and n-paciente = paciente] [
+      set xcor min-pxcor + 1 + random 15
+      set ycor max-pycor - 1 - random 3
+      set en-espera 1
+      set n-paciente 0
+    ]
+
+    set pacientes remove-item 0 pacientes
+  ]
+end
+
+to acomodar-pacientes-reposo
+  let camas sort turtles with [ tipo = "cama" and en-espera = 1 ]
+  let pacientes sort turtles with [ tipo = "paciente" and en-espera = -1 ]
+  while [(length pacientes > 0) and (length camas > 0)][
+    let paciente (first pacientes)
+    let cama (first camas)
+
+    ask turtle ([who] of paciente) [
+      move-to cama
+      set en-espera -2
+      set cam cama
+    ]
+
+    ask turtle ([who] of cama) [
+      set en-espera 0
+    ]
+
+    set pacientes remove-item 0 pacientes
+    set camas remove-item 0 camas
+  ]
+end
+
+
 
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -342,8 +500,8 @@ SLIDER
 cant-camas
 cant-camas
 0
-50
-15.0
+49
+21.0
 1
 1
 NIL
@@ -357,8 +515,8 @@ SLIDER
 cant-salas
 cant-salas
 0
-100
-25.0
+20
+10.0
 1
 1
 NIL
@@ -388,7 +546,7 @@ pacientes-minuto
 pacientes-minuto
 0
 100
-1.0
+5.0
 1
 1
 NIL
@@ -403,7 +561,7 @@ SLIDER
 %-pacientes-leves
 0
 100
-60.0
+33.0
 1
 1
 %
@@ -418,7 +576,7 @@ SLIDER
 %-pacientes-graves
 0
 100
-30.0
+33.0
 1
 1
 %
@@ -433,7 +591,7 @@ SLIDER
 %-pacientes-muy-graves
 0
 100
-10.0
+33.0
 1
 1
 %
@@ -465,7 +623,7 @@ cant-doctores
 cant-doctores
 0
 100
-10.0
+20.0
 1
 1
 NIL
@@ -552,7 +710,7 @@ prom-espera-leve
 prom-espera-leve
 0
 500
-100.0
+161.0
 1
 1
 min
@@ -567,7 +725,7 @@ prom-espera-grave
 prom-espera-grave
 0
 500
-60.0
+111.0
 1
 1
 min
@@ -582,7 +740,7 @@ prom-espera-muy-grave
 prom-espera-muy-grave
 0
 500
-30.0
+60.0
 1
 1
 min
@@ -597,7 +755,7 @@ prom-atencion-leve
 prom-atencion-leve
 0
 100
-50.0
+5.0
 1
 1
 min
@@ -612,7 +770,7 @@ prom-atencion-grave
 prom-atencion-grave
 0
 100
-50.0
+5.0
 1
 1
 min
@@ -627,7 +785,7 @@ prom-atencion-muy-grave
 prom-atencion-muy-grave
 0
 100
-2.0
+5.0
 1
 1
 min
@@ -642,7 +800,7 @@ prom-deteccion-condicion
 prom-deteccion-condicion
 0
 100
-30.0
+9.0
 1
 1
 min
@@ -876,6 +1034,11 @@ Polygon -7500403 true true 165 180 165 210 225 180 255 120 210 135
 Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
+
+rectangle
+false
+0
+Rectangle -7500403 true true 75 0 225 300
 
 sheep
 false
