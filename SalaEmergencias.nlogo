@@ -110,7 +110,7 @@ to crear-paciente-leve
     set xcor 2 + random 13
     set ycor -2 - random 13
     set shape "person"
-    set tiempo-de-vida (ticks + (random-poisson prom-espera-muy-grave))
+    set tiempo-de-vida (ticks + (random-poisson prom-espera-leve))
     set en-espera 1
   ]
 end
@@ -165,21 +165,18 @@ end
 to atender-leve [paciente]
   if doctores-desocupados >= 1 [
     show "leve"
-    ask turtle ([who] of paciente) [ die ]
   ]
 end
 
 to atender-grave [paciente]
   if doctores-desocupados >= 3 [
     show "grave"
-    ask turtle ([who] of paciente) [ die ]
   ]
 end
 
 to atender-muy-grave [paciente]
   if doctores-desocupados >= 5 [
     show "muy grave"
-    ask turtle ([who] of paciente) [ die ]
   ]
 end
 
@@ -399,7 +396,7 @@ MONITOR
 257
 411
 pacientes-leves-SA
-count turtles with [tipo = 3]
+count turtles with [categoria = 3]
 17
 1
 11
@@ -410,7 +407,7 @@ MONITOR
 532
 410
 pacientes-graves-SA
-count turtles with [ tipo = 2]
+count turtles with [ categoria = 2]
 17
 1
 11
@@ -421,7 +418,7 @@ MONITOR
 704
 409
 pacientes-muy-graves-SA
-count turtles with [ tipo = 1]
+count turtles with [ categoria = 1]
 17
 1
 11

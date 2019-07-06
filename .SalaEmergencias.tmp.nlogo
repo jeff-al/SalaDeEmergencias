@@ -165,7 +165,6 @@ end
 to atender-leve [paciente]
   if doctores-desocupados >= 1 [
     show "leve"
-    ask turtle ([who] of paciente) [ die ]
   ]
 end
 
@@ -178,7 +177,6 @@ end
 to atender-muy-grave [paciente]
   if doctores-desocupados >= 5 [
     show "muy grave"
-    ask turtle ([who] of paciente) [ die ]
   ]
 end
 
@@ -409,7 +407,7 @@ MONITOR
 532
 410
 pacientes-graves-SA
-count turtles with [ tipo = 2]
+count turtles with [ categoria = 2]
 17
 1
 11
