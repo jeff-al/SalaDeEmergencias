@@ -377,21 +377,23 @@ to verificar-fin-atencion
 end
 
 to acomodar-pacientes-reposo
-  ask turtles with [ tipo = "paciente" and estado = estado-esperando-cama ] ;; Lista de pacientes esperando cama
-  [
-    ;; Se modifica el paciente
-    ;; Se mueve el paciente al area de camas
-    set xcor ((min-pxcor + 2) + random 13 )
-    set ycor ((min-pycor + 2) + random 13 )
-    ;;
-    set estado estado-listo-para-salir ;; El paciente pasa a estar listo-para-salir
+  if camas-desocupadas > 0 [
+    ask turtles with [ tipo = "paciente" and estado = estado-esperando-cama ] ;; Lista de pacientes esperando cama
+    [
+      ;; Se modifica el paciente
+      ;; Se mueve el paciente al area de camas
+      set xcor ((min-pxcor + 2) + random 13 )
+      set ycor ((min-pycor + 2) + random 13 )
+      ;;
+      set estado estado-listo-para-salir ;; El paciente pasa a estar listo-para-salir
 
 
-    ;; Se ocupa la cama
-    set camas-desocupadas (camas-desocupadas - 1)
+      ;; Se ocupa la cama
+      set camas-desocupadas (camas-desocupadas - 1)
 
-    ;; Se libera el quirofano en el que estaba el paciente
-    set salas-desocupadas (salas-desocupadas + 1)
+      ;; Se libera el quirofano en el que estaba el paciente
+      set salas-desocupadas (salas-desocupadas + 1)
+    ]
   ]
 end
 
