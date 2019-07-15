@@ -44,6 +44,7 @@ to setup
   clear-all
   setup-estados
   setup-turtles
+  setup-recursos
   setup-porcentajes
   setup-listas
   set proxima-llegada (random-poisson pacientes-minuto)
@@ -52,7 +53,6 @@ end
 
 ;; Hace las iteraciones en cada tik
 to go
-
   if ticks >= (proxima-llegada) [
     crear-paciente
     set proxima-llegada ((random-poisson pacientes-minuto) + ticks)
@@ -433,7 +433,7 @@ to verificar-muertes
 
     (ifelse ;; Desocupar quirofanos o camas
       ((([estado] of paciente) = estado-en-quirofano) or (([estado] of paciente) = estado-esperando-cama))  [ ;; Desocupar quirofano
-        atender-grave paciente
+
       ]
       ([estado] of paciente) = estado-listo-para-salir [ ;; Desocupar cama
         set camas-desocupadas (camas-desocupadas + 1)
@@ -628,7 +628,7 @@ cant-doctores
 cant-doctores
 0
 100
-4.0
+20.0
 1
 1
 NIL

@@ -433,7 +433,7 @@ to verificar-muertes
 
     (ifelse ;; Desocupar quirofanos o camas
       ((([estado] of paciente) = estado-en-quirofano) or (([estado] of paciente) = estado-esperando-cama))  [ ;; Desocupar quirofano
-        atender-grave paciente
+        set salas-desocupadas (salas-desocupadas + 1)
       ]
       ([estado] of paciente) = estado-listo-para-salir [ ;; Desocupar cama
         set camas-desocupadas (camas-desocupadas + 1)
