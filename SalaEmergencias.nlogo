@@ -261,6 +261,7 @@ to atender-leve [paciente]
     ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
       set tiempo-atencion ((random-poisson prom-atencion-leve) + ticks) ;; Se le establece el tiempo de atencion
+      set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
 
@@ -290,6 +291,7 @@ to atender-grave [paciente]
       set ycor ((max-pycor - 5) - random 10 )
       ;;
       set tiempo-atencion ((random-poisson prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
+      set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
 
@@ -323,6 +325,7 @@ to atender-muy-grave [paciente]
       set ycor ((max-pycor - 5) - random 10 )
       ;;
       set tiempo-atencion ((random-poisson prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
+      set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
 
@@ -354,9 +357,11 @@ to verificar-fin-atencion
     ]
     if (categoria = 2)[ ;; Paciente con condicion grave
       set doctores-desocupados (doctores-desocupados + 3) ;; Aumentamos cantidad de doctomer libres
+      set tiempo-de-vida (ticks + (random-poisson 5) * 1440)
     ]
     if (categoria = 3)[ ;; Paciente con condicion muy-grave
       set doctores-desocupados (doctores-desocupados + 5) ;; Aumentamos cantidad de doctomer libres
+      set tiempo-de-vida (ticks + (random-poisson 2) * 1440 )
     ]
 
     ;; Se modifican los doctores
@@ -432,7 +437,12 @@ to verificar-muertes
 end
 
 to verificar-salidas
-  ask turtles with [estado = estado-listo-para-salir][
+  ask turtles with [estado = estado-listo-para-salir and tiempo-de-vida <= ticks][
+    set num-atenciones-correctas (num-atenciones-correctas + 1)
+    set camas-desocupadas (camas-desocupadas + 1)
+    die
+  ]
+  ask turtles with [estado = estado-listo-para-salir and categoria = 1][
     set num-atenciones-correctas (num-atenciones-correctas + 1)
     die
   ]
@@ -519,7 +529,7 @@ tiempo-entre-arribos
 tiempo-entre-arribos
 0
 100
-1.0
+15.0
 1
 1
 NIL
@@ -534,7 +544,7 @@ SLIDER
 %-pacientes-leves
 0
 100
-100.0
+30.0
 1
 1
 %
@@ -549,7 +559,7 @@ SLIDER
 %-pacientes-graves
 0
 100
-0.0
+60.0
 1
 1
 %
@@ -564,7 +574,7 @@ SLIDER
 %-pacientes-muy-graves
 0
 100
-0.0
+10.0
 1
 1
 %
@@ -596,7 +606,7 @@ cant-doctores
 cant-doctores
 0
 100
-1.0
+20.0
 1
 1
 NIL
@@ -683,7 +693,7 @@ prom-espera-leve
 prom-espera-leve
 0
 500
-3.0
+273.0
 1
 1
 min
@@ -698,7 +708,7 @@ prom-espera-grave
 prom-espera-grave
 0
 500
-139.0
+20.0
 1
 1
 min
@@ -713,7 +723,7 @@ prom-espera-muy-grave
 prom-espera-muy-grave
 0
 500
-90.0
+3.0
 1
 1
 min
@@ -728,7 +738,7 @@ prom-atencion-leve
 prom-atencion-leve
 0
 100
-1.0
+11.0
 1
 1
 min
@@ -743,7 +753,7 @@ prom-atencion-grave
 prom-atencion-grave
 0
 100
-2.0
+25.0
 1
 1
 min
@@ -758,7 +768,7 @@ prom-atencion-muy-grave
 prom-atencion-muy-grave
 0
 100
-5.0
+40.0
 1
 1
 min
