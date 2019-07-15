@@ -44,7 +44,6 @@ to setup
   clear-all
   setup-estados
   setup-turtles
-  setup-recursos
   setup-porcentajes
   setup-listas
   set proxima-llegada (random-poisson pacientes-minuto)
@@ -53,6 +52,7 @@ end
 
 ;; Hace las iteraciones en cada tik
 to go
+
   if ticks >= (proxima-llegada) [
     crear-paciente
     set proxima-llegada ((random-poisson pacientes-minuto) + ticks)
@@ -628,7 +628,7 @@ cant-doctores
 cant-doctores
 0
 100
-20.0
+4.0
 1
 1
 NIL
