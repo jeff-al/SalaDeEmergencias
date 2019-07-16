@@ -426,6 +426,9 @@ to atender-grave [paciente]
       set xcor ((min-pxcor + 2) + random 13 )
       set ycor ((max-pycor - 5) - random 10 )
       ;;
+      create-link-to paciente[
+        set color yellow
+      ]
       set tiempo-atencion ((random-exponential prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
@@ -440,9 +443,6 @@ to atender-grave [paciente]
       set xcor xcor + random 3
       set ycor ycor + random 3
       ;;
-      create-link-to paciente[
-        set color yellow
-      ]
       set estado estado-ocupado ;; Los doctores pasan a estar ocupados
       set n-paciente paciente ;; Se asocia el paciente a los doctores
     ]
@@ -463,6 +463,7 @@ to atender-muy-grave [paciente]
       set xcor ((min-pxcor + 2) + random 13 )
       set ycor ((max-pycor - 5) - random 10 )
       ;;
+
       set tiempo-atencion ((random-exponential prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
@@ -477,9 +478,6 @@ to atender-muy-grave [paciente]
       set xcor xcor + random 3
       set ycor ycor + random 3
       ;;
-      create-link-to paciente[
-        set color red
-      ]
       set estado estado-ocupado ;; Los doctores pasan a estar ocupados
       set n-paciente paciente ;; Se asocia el paciente a los doctores
     ]
