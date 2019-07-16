@@ -915,6 +915,26 @@ num-llegadas
 1
 11
 
+PLOT
+400
+127
+665
+403
+Pacientes en el sistema
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Muy grave" 1.0 0 -2674135 true "" "plot count turtles with [tipo = \"paciente\" and categoria = 3]"
+"Grave" 1.0 0 -1184463 true "" "plot count turtles with [tipo = \"paciente\" and categoria = 2]"
+"Leve" 1.0 0 -10899396 true "" "plot count turtles with [tipo = \"paciente\" and categoria = 1]"
+
 @#$#@#$#@
 ## WHAT IS IT?
 
