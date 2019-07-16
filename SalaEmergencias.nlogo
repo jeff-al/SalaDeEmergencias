@@ -9,11 +9,17 @@ globals [
   %-grave
   %-muy-grave
 
+
   doctores-desocupados
   camas-desocupadas
   salas-desocupadas
 
   prom-tiempo-reposo
+  prom-deteccion-condicion
+  prom-espera-leve
+  prom-espera-grave
+  prom-espera-muy-grave
+
 
   ;;Constantes de estados
   estado-llegada ;; Estado del paciente cuando llega al hospital
@@ -42,6 +48,7 @@ turtles-own [
 to setup
   clear-all
   setup-estados
+  setup-promedios
   setup-turtles
   setup-recursos
   setup-porcentajes
@@ -78,6 +85,13 @@ to setup-recursos
   set doctores-desocupados cant-doctores
   set camas-desocupadas cant-camas
   set salas-desocupadas cant-salas
+end
+
+to setup-promedios
+  set prom-deteccion-condicion 3
+  set prom-espera-leve 140
+  set prom-espera-grave 16
+  set prom-espera-muy-grave 5
 end
 
 
@@ -260,7 +274,7 @@ to atender-leve [paciente]
 
     ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      set tiempo-atencion ((random-poisson prom-atencion-leve) + ticks) ;; Se le establece el tiempo de atencion
+      set tiempo-atencion ((random-exponential prom-atencion-leve) + ticks) ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
@@ -290,7 +304,7 @@ to atender-grave [paciente]
       set xcor ((min-pxcor + 2) + random 13 )
       set ycor ((max-pycor - 5) - random 10 )
       ;;
-      set tiempo-atencion ((random-poisson prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
+      set tiempo-atencion ((random-exponential prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
@@ -324,7 +338,7 @@ to atender-muy-grave [paciente]
       set xcor ((min-pxcor + 2) + random 13 )
       set ycor ((max-pycor - 5) - random 10 )
       ;;
-      set tiempo-atencion ((random-poisson prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
+      set tiempo-atencion ((random-exponential prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
@@ -485,8 +499,8 @@ SLIDER
 cant-camas
 cant-camas
 0
-49
-22.0
+200
+5.0
 1
 1
 NIL
@@ -501,7 +515,7 @@ cant-salas
 cant-salas
 0
 20
-20.0
+5.0
 1
 1
 NIL
@@ -516,7 +530,7 @@ cant-enfermeras
 cant-enfermeras
 0
 100
-1.0
+30.0
 1
 1
 NIL
@@ -531,7 +545,7 @@ tiempo-entre-arribos
 tiempo-entre-arribos
 0
 100
-15.0
+5.0
 1
 1
 NIL
@@ -631,7 +645,7 @@ MONITOR
 398
 460
 NIL
-num-camas-usadas
+camas-desocupadas
 17
 1
 11
@@ -658,7 +672,7 @@ MONITOR
 474
 203
 519
-pacientes-leves-SA
+Pacientes leves
 count turtles with [categoria = 1]
 17
 1
@@ -669,7 +683,7 @@ MONITOR
 474
 396
 519
-pacientes-graves-SA
+Pacientes graves
 count turtles with [ categoria = 2]
 17
 1
@@ -680,62 +694,17 @@ MONITOR
 474
 590
 519
-pacientes-muy-graves-SA
+Pacientes muy graves
 count turtles with [ categoria = 3]
 17
 1
 11
 
 SLIDER
-213
-267
-393
-300
-prom-espera-leve
-prom-espera-leve
-0
-500
-273.0
-1
-1
-min
-HORIZONTAL
-
-SLIDER
-213
-313
-394
-346
-prom-espera-grave
-prom-espera-grave
-0
-500
-20.0
-1
-1
-min
-HORIZONTAL
-
-SLIDER
-214
-360
-395
-393
-prom-espera-muy-grave
-prom-espera-muy-grave
-0
-500
-3.0
-1
-1
-min
-HORIZONTAL
-
-SLIDER
-404
-268
-583
-301
+212
+223
+391
+256
 prom-atencion-leve
 prom-atencion-leve
 0
@@ -747,10 +716,10 @@ min
 HORIZONTAL
 
 SLIDER
-404
-314
-585
-347
+212
+269
+393
+302
 prom-atencion-grave
 prom-atencion-grave
 0
@@ -762,10 +731,10 @@ min
 HORIZONTAL
 
 SLIDER
-405
-359
-585
-392
+213
+314
+393
+347
 prom-atencion-muy-grave
 prom-atencion-muy-grave
 0
@@ -776,26 +745,11 @@ prom-atencion-muy-grave
 min
 HORIZONTAL
 
-SLIDER
-213
-222
-392
-255
-prom-deteccion-condicion
-prom-deteccion-condicion
-0
-100
-2.0
-1
-1
-min
-HORIZONTAL
-
 BUTTON
-298
-27
-361
-60
+264
+43
+345
+86
 step
 go
 NIL
