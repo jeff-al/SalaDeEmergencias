@@ -651,7 +651,7 @@ GRAPHICS-WINDOW
 1
 1
 1
-ticks
+minutos
 30.0
 
 SLIDER
@@ -677,8 +677,8 @@ SLIDER
 cant-salas
 cant-salas
 0
-20
-10.0
+100
+15.0
 1
 1
 NIL
@@ -702,16 +702,16 @@ HORIZONTAL
 SLIDER
 21
 222
-201
+207
 255
 tiempo-entre-arribos
 tiempo-entre-arribos
 0
 100
-3.0
+15.0
 1
 1
-NIL
+min
 HORIZONTAL
 
 SLIDER
@@ -785,7 +785,7 @@ cant-doctores
 cant-doctores
 0
 100
-5.0
+20.0
 1
 1
 NIL
@@ -796,7 +796,7 @@ MONITOR
 415
 204
 460
-NIL
+Muertes
 num-muertes
 17
 1
@@ -807,7 +807,7 @@ MONITOR
 415
 398
 460
-NIL
+Camas desocupadas
 camas-desocupadas
 17
 1
@@ -930,7 +930,7 @@ MONITOR
 416
 566
 461
-NIL
+Atenciones correctas
 num-atenciones-correctas
 17
 1
@@ -941,7 +941,7 @@ MONITOR
 416
 665
 461
-NIL
+Llegadas
 num-llegadas
 17
 1
