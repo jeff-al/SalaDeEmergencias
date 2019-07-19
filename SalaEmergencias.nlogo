@@ -39,9 +39,11 @@ turtles-own [
   estado ;; Estado del paciente en dado momento
   tiempo-llegada
   tiempo-de-vida ;; Tiempo de vida del paciente
-  tiempo-condicion ;; Tiempo que se dura en determinar la condicion del paciente
-  tiempo-atencion ;; Tiempo que se va a durar ateniendo al paciente
-  n-paciente ;; paciente que esta relacionado con el agente, 0 si no hay ningun paciente relacionado
+]
+
+links-own[
+  clase ;; Clase del enlace: 1 para enfermera-paciente, 2 para doctor-paciente
+  tiempo ;; Tiempo de duracion del link
 ]
 
 ;; Inicializa el ambiente para su ejecucion
@@ -106,7 +108,6 @@ to setup-doctores
     set ycor max-pycor - 1 - random 3
     set shape "person"
     set estado estado-libre
-    set n-paciente 0
   ]
 end
 
@@ -120,7 +121,6 @@ to setup-enfermeras
     set ycor max-pycor - 3 - random 4
     set shape "person"
     set estado estado-libre
-    set n-paciente 0
   ]
 end
 
@@ -204,7 +204,7 @@ to setup-zona-pacientes
     while [y < 23] [
       set coorY (min-pycor + 2 + y)
       ask patch coorX coorY [
-        set pcolor blue
+        set pcolor magenta
       ]
       set y (y + 1)
     ]
@@ -221,7 +221,7 @@ to setup-zona-salas
   while [x < 13] [
     set y 0
     set coorX (min-pxcor + 2 + x)
-    while [y < 10] [
+    while [y < 11] [
       set coorY (max-pycor - 5 - y)
       ask patch coorX coorY [
         set pcolor sky
@@ -242,7 +242,7 @@ to setup-zona-camas
   while [x < 13] [
     set y 0
     set coorX (min-pxcor + 2 + x)
-    while [y < 13] [
+    while [y < 14] [
       set coorY (max-pycor + 2 + y)
       ask patch coorX coorY [
         set pcolor grey
@@ -296,16 +296,17 @@ to verificar-pacientes
     ask turtle ([who] of enfermera) [
       move-to paciente ;; Se mueve la enfermera a la posicion del paciente
       set xcor (xcor - 1) ;; Se mueve la enfermera al costado izq del paciente
-      create-link-to paciente[
+      create-link-to paciente[ ;; Se crea el link enfermara-paciente
         set color blue
+        set tiempo ((random-exponential prom-deteccion-condicion) + ticks) ;; Se establece el tiempo que durará la verificacion de la condicion
+        set clase 1
       ]
       set estado estado-ocupado ;; El estado de la enfermera pasa a ocupado
-      set n-paciente paciente ;; Se asocia el paciente a la enfermera
     ]
 
     ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      set tiempo-condicion ((random-exponential prom-deteccion-condicion) + ticks) ;; Se establece el tiempo que durará la verificacion de la condicion
+      ;;set tiempo-condicion ((random-exponential prom-deteccion-condicion) + ticks) ;; Se establece el tiempo que durará la verificacion de la condicion
       set estado estado-verificando-condicion ;; El estado del paciente cambia a verificando-condicion
     ]
 
@@ -316,9 +317,11 @@ end
 
 ;; Metodo para verificar la condicion del paciente
 to verificar-condicion
-  ask turtles with [ tipo = "paciente" and estado = estado-verificando-condicion and tiempo-condicion <= ticks]
-  [
-    ;; Lista de pacientes listos para saber su condicion
+  ask links with [clase = 1 and tiempo <= ticks][ ;; Lista de pacientes listos para saber su condicion
+
+    let paciente end2 ;; paciente
+    let enfermera end1 ;; enfermera
+
     let proba random 100 ;; Numero aleatorio que indicara la condicion
     let colorP 0 ;; variable para el nuevo color del paciente
     let condicion 0 ;; variable para la nueva condicion del paciente
@@ -342,14 +345,15 @@ to verificar-condicion
     ])
 
     ;; Se modifica el paciente
-    ask turtle (who) [
+    ask turtle ([who] of paciente) [
       set categoria condicion ;; Se le cambia la categoria segun la condicion
       set color colorP ;; Se le cambia el color segun la condicion
       set tiempo-de-vida tiempoVida ;; Se le establece el tiempo de vida segun la condicion
       set estado estado-espera-atencion ;; El estado del paciente cambia a espera-atencion
     ]
 
-    ask turtles with [tipo = "enfermera" and n-paciente = myself] [
+    ;; Se modifica la enfermera
+    ask turtle ([who] of enfermera) [
       ;; Se mueve la enfermera a un puesto inicial
       set xcor max-pxcor - 2 - random 13
       set ycor max-pycor - 3 - random 4
@@ -357,10 +361,7 @@ to verificar-condicion
       set estado estado-libre ;; La enfermera pasa a estar libre
     ]
 
-    ask links with [end2 = myself] [
-      die
-    ]
-
+    die ;; Eliminamos el link
   ]
 end
 
@@ -390,9 +391,11 @@ end
 to atender-leve [paciente]
   if doctores-desocupados >= 1 [ ;; Se verifica disponibilidad de doctores
 
+    let tiempo-atencion ((random-exponential prom-atencion-leve) + ticks) ;; Se le establece el tiempo de atencion
+
     ;; Se modifica el paciente
     ask turtle ([who] of paciente) [
-      set tiempo-atencion ((random-exponential prom-atencion-leve) + ticks) ;; Se le establece el tiempo de atencion
+      ;;set tiempo-atencion ((random-exponential prom-atencion-leve) + ticks) ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
@@ -404,9 +407,10 @@ to atender-leve [paciente]
       ;;
       create-link-to paciente[
         set color green
+        set tiempo tiempo-atencion ;; Se le establece el tiempo de atencion al link
+        set clase 2
       ]
       set estado estado-ocupado ;; El doctor pasa a estar ocupado
-      set n-paciente paciente ;; Se asocia el paciente al doctor
     ]
 
     set doctores-desocupados (doctores-desocupados - 1) ;; Se disminuye cantidad de doctores libres
@@ -417,6 +421,8 @@ to atender-grave [paciente]
 
   if ((doctores-desocupados >= 3) and (salas-desocupadas > 0)) [  ;; Se verifica disponibilidad de doctores y quirofanos
 
+    let tiempo-atencion ((random-exponential prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
+
     ;; Se ocupa el quirofano
     set salas-desocupadas (salas-desocupadas - 1)
 
@@ -426,7 +432,7 @@ to atender-grave [paciente]
       set xcor ((min-pxcor + 2) + random 13 )
       set ycor ((max-pycor - 5) - random 10 )
       ;;
-      set tiempo-atencion ((random-exponential prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
+      ;;set tiempo-atencion ((random-exponential prom-atencion-grave) + ticks)  ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
@@ -442,9 +448,10 @@ to atender-grave [paciente]
       ;;
       create-link-to paciente[
         set color yellow
+        set tiempo tiempo-atencion ;; Se le establece el tiempo de atencion al link
+        set clase 2
       ]
       set estado estado-ocupado ;; Los doctores pasan a estar ocupados
-      set n-paciente paciente ;; Se asocia el paciente a los doctores
     ]
 
     set doctores-desocupados (doctores-desocupados - 3) ;; Se disminuye cantidad de doctores libres
@@ -453,6 +460,8 @@ end
 
 to atender-muy-grave [paciente]
   if ((doctores-desocupados >= 5) and (salas-desocupadas > 0)) [  ;; Se verifica disponibilidad de doctores y quirofanos
+
+    let tiempo-atencion ((random-exponential prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
 
     ;; Se ocupa el quirofano
     set salas-desocupadas (salas-desocupadas - 1)
@@ -463,7 +472,7 @@ to atender-muy-grave [paciente]
       set xcor ((min-pxcor + 2) + random 13 )
       set ycor ((max-pycor - 5) - random 10 )
       ;;
-      set tiempo-atencion ((random-exponential prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
+      ;;set tiempo-atencion ((random-exponential prom-atencion-muy-grave) + ticks) ;; Se le establece el tiempo de atencion
       set tiempo-de-vida (tiempo-de-vida + tiempo-atencion) ;; AQUI ESTAMOS HACIENDO QUE LOS QUE SON ATENDIDOS NO MUERAN
       set estado estado-en-quirofano ;; El estado del paciente cambia a en-quirofano
     ]
@@ -479,9 +488,10 @@ to atender-muy-grave [paciente]
       ;;
       create-link-to paciente[
         set color red
+        set tiempo tiempo-atencion ;; Se le establece el tiempo de atencion al link
+        set clase 2
       ]
       set estado estado-ocupado ;; Los doctores pasan a estar ocupados
-      set n-paciente paciente ;; Se asocia el paciente a los doctores
     ]
 
     set doctores-desocupados (doctores-desocupados - 5) ;; Se disminuye cantidad de doctores libres
@@ -490,35 +500,53 @@ end
 
 ;; Metodo para verificar los pacientes que terminan de ser atendidos
 to verificar-fin-atencion
-  ask turtles with [ tipo = "paciente" and estado = estado-en-quirofano and tiempo-atencion <= ticks] ;; Lista de pacientes que terminan de ser atendidos
+  ask links with [clase = 2 and tiempo <= ticks] ;; Lista de pacientes que terminan de ser atendidos
   [
-    set estado estado-esperando-cama ;; El paciente pasa a estar esperando cama
-    if (categoria = 1)[ ;; Paciente con condicion leve
-      set estado estado-listo-para-salir ;; Los pacientes leves pasan a estar listos-para-salir
-      set doctores-desocupados (doctores-desocupados + 1) ;; Aumentamos cantidad de doctomer libres
-    ]
-    if (categoria = 2)[ ;; Paciente con condicion grave
-      set doctores-desocupados (doctores-desocupados + 3) ;; Aumentamos cantidad de doctomer libres
-      set tiempo-de-vida (ticks + (random-poisson 5) * 1440)
-    ]
-    if (categoria = 3)[ ;; Paciente con condicion muy-grave
-      set doctores-desocupados (doctores-desocupados + 5) ;; Aumentamos cantidad de doctomer libres
-      set tiempo-de-vida (ticks + (random-poisson 2) * 1440 )
+
+    let paciente end2 ;; Paciente
+    let doctor end1 ;; Doctor
+
+    ask turtle ([who] of paciente) [
+      set estado estado-esperando-cama ;; El paciente pasa a estar esperando cama
+      if (categoria = 1)[ ;; Paciente con condicion leve
+        set estado estado-listo-para-salir ;; Los pacientes leves pasan a estar listos-para-salir
+        set doctores-desocupados (doctores-desocupados + 1) ;; Aumentamos cantidad de doctomer libres
+      ]
+      if (categoria = 2)[ ;; Paciente con condicion grave
+        set doctores-desocupados (doctores-desocupados + 3) ;; Aumentamos cantidad de doctomer libres
+        set tiempo-de-vida (ticks + (random-poisson 5) * 1440)
+      ]
+      if (categoria = 3)[ ;; Paciente con condicion muy-grave
+        set doctores-desocupados (doctores-desocupados + 5) ;; Aumentamos cantidad de doctomer libres
+        set tiempo-de-vida (ticks + (random-poisson 2) * 1440 )
+      ]
     ]
 
     ;; Se modifican los doctores
-    ask turtles with [tipo = "doctor" and n-paciente = myself] [
+    ask turtle ([who] of doctor)  [
       ;; Se mueven los doctores a un puesto inicial
       set xcor min-pxcor + 1 + random 15
       set ycor max-pycor - 1 - random 3
       ;;
       set estado estado-libre ;; El estado de los doctores pasa a libre
-      set n-paciente 0 ;; Se elimina la asociacion de los doctores con el paciente
     ]
 
-    ask links with [end2 = myself] [
-      die
+    ask links with [end2 = paciente and end1 != doctor] [
+
+      let doc end1
+      ;; Se modifican los doctores
+      ask turtle ([who] of doc)  [
+        ;; Se mueven los doctores a un puesto inicial
+        set xcor min-pxcor + 1 + random 15
+        set ycor max-pycor - 1 - random 3
+        ;;
+        set estado estado-libre ;; El estado de los doctores pasa a libre
+      ]
+
+      die ;; Eliminamos el link
     ]
+
+    die ;; Eliminamos el link
   ]
 end
 
@@ -556,24 +584,28 @@ to verificar-muertes
       ])
 
     ;; Se liberan los doctores (si es necesario)
-    ask turtles with [tipo = "doctor" and n-paciente = myself] [
-      ;; Se mueven los doctores a un puesto inicial
-      set xcor min-pxcor + 1 + random 15
-      set ycor max-pycor - 1 - random 3
-      ;;
-      set estado estado-libre ;; El estado de los doctores pasa a libre
-      set doctores-desocupados (doctores-desocupados + 1)
-      set n-paciente 0 ;; Se elimina la asociacion de los doctores con el paciente
+    ask links with [end2 = myself and clase = 2] [
+      ask turtle ([who] of end1)[
+        ;; Se mueven los doctores a un puesto inicial
+        set xcor min-pxcor + 1 + random 15
+        set ycor max-pycor - 1 - random 3
+        ;;
+        set estado estado-libre ;; El estado de los doctores pasa a libre
+        set doctores-desocupados (doctores-desocupados + 1)
+      ]
+      die
     ]
 
     ;; Se liberan la enfermera (si es necesario)
-    ask turtles with [tipo = "enfermera" and n-paciente = myself] [
-      ;; Se mueve la enfermera a un puesto inicial
-      set xcor max-pxcor - 2 - random 13
-      set ycor max-pycor - 3 - random 4
-      ;;
-      set estado estado-libre ;; El estado de la enfermera pasa a libre
-      set n-paciente 0 ;; Se elimina la asociacion de la enfermera con el paciente
+    ask links with [end2 = myself and clase = 1] [
+      ask turtle ([who] of end1)[
+        ;; Se mueve la enfermera a un puesto inicial
+        set xcor max-pxcor - 2 - random 13
+        set ycor max-pycor - 3 - random 4
+        ;;
+        set estado estado-libre ;; El estado de la enfermera pasa a libre
+      ]
+      die
     ]
 
     set num-muertes (num-muertes + 1) ;; Se aumenta la cantidad de muertes
@@ -676,7 +708,7 @@ tiempo-entre-arribos
 tiempo-entre-arribos
 0
 100
-15.0
+3.0
 1
 1
 NIL
@@ -753,7 +785,7 @@ cant-doctores
 cant-doctores
 0
 100
-20.0
+5.0
 1
 1
 NIL
@@ -833,9 +865,9 @@ count turtles with [ categoria = 3]
 
 SLIDER
 212
-223
+268
 391
-256
+301
 prom-atencion-leve
 prom-atencion-leve
 0
@@ -848,9 +880,9 @@ HORIZONTAL
 
 SLIDER
 212
-269
+314
 393
-302
+347
 prom-atencion-grave
 prom-atencion-grave
 0
@@ -863,9 +895,9 @@ HORIZONTAL
 
 SLIDER
 213
-314
+359
 393
-347
+392
 prom-atencion-muy-grave
 prom-atencion-muy-grave
 0
