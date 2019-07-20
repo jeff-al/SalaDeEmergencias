@@ -977,7 +977,7 @@ PENS
 
 Simulador de un servicio de emergencias de un hospital, que ayude a su recurso humano, administrativo y médico, a mejorar las métricas del servicio.
 
-# CÓMO FUNCIONA
+# C
 
 ## Agentes
 
